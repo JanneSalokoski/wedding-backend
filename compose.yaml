@@ -1,0 +1,16 @@
+# See: https://docs.docker.com/go/compose-spec-reference/
+
+services:
+  server:
+    build:
+      context: .
+      args:
+        - UID=$UID
+        - GID=$GID
+    ports:
+      - 8000:8000
+    volumes:
+      - db_data:/app/db_data
+
+volumes:
+  db_data:

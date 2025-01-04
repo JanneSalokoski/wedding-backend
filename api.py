@@ -44,7 +44,7 @@ class ResponseCreate(ResponseBase):
     pass
 
 
-sqlite_file = "database.db"
+sqlite_file = "db_data/database.db"
 sqlite_url = f"sqlite:///{sqlite_file}"
 
 connect_args = {"check_same_thread": False}
