@@ -97,16 +97,16 @@ async def lifespan(app: FastAPI):
 
 app: FastAPI = FastAPI(lifespan=lifespan)
 
-# origins = ["*"]
-#
-# app.add_middleware(
-#     CORSMiddleware,
-#     allow_origins=origins,
-#     allow_credentials=True,
-#     allow_methods=["*"],
-#     allow_headers=["*"],
-# )
-#
+origins = ["*"]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 
 @app.get("/responses/", response_model=list[ResponsePublic])
@@ -172,32 +172,39 @@ def read_progress(session: SessionDep):
 
 @app.get("/progress/avg/", response_model=list[ProgressAvg])
 def read_progress_averages(session: SessionDep):
+    averages = func.avg(Progress.timestamp).label("average")
     progresses = session.exec(
         select(
-            Progress.headline, func.avg(Progress.timestamp).label("average")
+            Progress.headline, averages
         ).group_by(Progress.headline)
+        .order_by(averages.desc())
     ).all()
     return progresses
 
 
 @app.get("/progress/count/", response_model=list[ProgressCount])
 def read_progress_counts(session: SessionDep):
+    counts = func.count(Progress.headline).label("amount")
     progresses = session.exec(
         select(
-            Progress.headline, func.count(Progress.headline).label("amount")
+            Progress.headline, counts
         ).group_by(Progress.headline)
+        .order_by(counts.desc())
     ).all()
     return progresses
 
 
 @app.get("/progress/stats/", response_model=list[ProgressStat])
 def read_progress_stats(session: SessionDep):
+    averages = func.avg(Progress.timestamp).label("average")
+    counts = func.count(Progress.headline).label("amount")
     progresses = session.exec(
         select(
             Progress.headline,
-            func.count(Progress.headline).label("amount"),
-            func.avg(Progress.timestamp).label("average"),
+            counts,
+            averages
         ).group_by(Progress.headline)
+        .order_by(counts.desc())
     ).all()
     return progresses
 
