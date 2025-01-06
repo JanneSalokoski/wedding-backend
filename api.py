@@ -97,16 +97,15 @@ async def lifespan(app: FastAPI):
 
 app: FastAPI = FastAPI(lifespan=lifespan)
 
-origins = ["*"]
+origins = ["https://www.jannejaroosa.fi"]
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
 )
-
 
 
 @app.get("/responses/", response_model=list[ResponsePublic])
@@ -174,9 +173,8 @@ def read_progress(session: SessionDep):
 def read_progress_averages(session: SessionDep):
     averages = func.avg(Progress.timestamp).label("average")
     progresses = session.exec(
-        select(
-            Progress.headline, averages
-        ).group_by(Progress.headline)
+        select(Progress.headline, averages)
+        .group_by(Progress.headline)
         .order_by(averages.desc())
     ).all()
     return progresses
@@ -186,9 +184,8 @@ def read_progress_averages(session: SessionDep):
 def read_progress_counts(session: SessionDep):
     counts = func.count(Progress.headline).label("amount")
     progresses = session.exec(
-        select(
-            Progress.headline, counts
-        ).group_by(Progress.headline)
+        select(Progress.headline, counts)
+        .group_by(Progress.headline)
         .order_by(counts.desc())
     ).all()
     return progresses
@@ -199,11 +196,8 @@ def read_progress_stats(session: SessionDep):
     averages = func.avg(Progress.timestamp).label("average")
     counts = func.count(Progress.headline).label("amount")
     progresses = session.exec(
-        select(
-            Progress.headline,
-            counts,
-            averages
-        ).group_by(Progress.headline)
+        select(Progress.headline, counts, averages)
+        .group_by(Progress.headline)
         .order_by(counts.desc())
     ).all()
     return progresses
