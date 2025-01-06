@@ -54,3 +54,4 @@ env.bak/
 venv.bak/
 
 database.db
+certbot/
