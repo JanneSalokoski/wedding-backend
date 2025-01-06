@@ -9,6 +9,7 @@ from typing import Annotated
 
 from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import func
 from sqlmodel import (
     Column,
     DateTime,
@@ -44,6 +45,31 @@ class ResponseCreate(ResponseBase):
     pass
 
 
+class ProgressBase(SQLModel):
+    timestamp: int = Field()
+    headline: str = Field(index=True)
+
+
+class Progress(ProgressBase, table=True):
+    progress_id: int | None = Field(primary_key=True, default=None)
+
+
+class ProgressAvg(SQLModel):
+    headline: str = Field()
+    average: float = Field()
+
+
+class ProgressCount(SQLModel):
+    headline: str = Field()
+    amount: int = Field()
+
+
+class ProgressStat(SQLModel):
+    headline: str = Field()
+    amount: int = Field()
+    average: float = Field()
+
+
 sqlite_file = "db_data/database.db"
 sqlite_url = f"sqlite:///{sqlite_file}"
 
@@ -71,15 +97,16 @@ async def lifespan(app: FastAPI):
 
 app: FastAPI = FastAPI(lifespan=lifespan)
 
-origins = ["*"]
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# origins = ["*"]
+#
+# app.add_middleware(
+#     CORSMiddleware,
+#     allow_origins=origins,
+#     allow_credentials=True,
+#     allow_methods=["*"],
+#     allow_headers=["*"],
+# )
+#
 
 
 @app.get("/responses/", response_model=list[ResponsePublic])
@@ -132,3 +159,54 @@ def delete_response(response_id: int, session: SessionDep):
     response_db.active = False
     session.add(response_db)
     session.commit()
+
+
+# Progress
+
+
+@app.get("/progress/", response_model=list[ProgressBase])
+def read_progress(session: SessionDep):
+    progresses = session.exec(select(Progress)).all()
+    return progresses
+
+
+@app.get("/progress/avg/", response_model=list[ProgressAvg])
+def read_progress_averages(session: SessionDep):
+    progresses = session.exec(
+        select(
+            Progress.headline, func.avg(Progress.timestamp).label("average")
+        ).group_by(Progress.headline)
+    ).all()
+    return progresses
+
+
+@app.get("/progress/count/", response_model=list[ProgressCount])
+def read_progress_counts(session: SessionDep):
+    progresses = session.exec(
+        select(
+            Progress.headline, func.count(Progress.headline).label("amount")
+        ).group_by(Progress.headline)
+    ).all()
+    return progresses
+
+
+@app.get("/progress/stats/", response_model=list[ProgressStat])
+def read_progress_stats(session: SessionDep):
+    progresses = session.exec(
+        select(
+            Progress.headline,
+            func.count(Progress.headline).label("amount"),
+            func.avg(Progress.timestamp).label("average"),
+        ).group_by(Progress.headline)
+    ).all()
+    return progresses
+
+
+@app.post("/progress/")
+def create_progress(progress: ProgressBase, session: SessionDep):
+    db_progress = Progress.model_validate(progress)
+    session.add(db_progress)
+    session.commit()
+    session.refresh(db_progress)
+
+    return db_progress
