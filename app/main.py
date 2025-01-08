@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .database import create_db_and_tables
-from .routers import progress_router, responses_router
+from .routers import guests_router, progress_router, responses_router
 
 
 @asynccontextmanager
@@ -29,3 +29,4 @@ app.add_middleware(
 
 app.include_router(progress_router, prefix="/progress", tags=["Progress"])
 app.include_router(responses_router, prefix="/responses", tags=["Responses"])
+app.include_router(guests_router, prefix="/guests", tags=["Guests"])
