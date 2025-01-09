@@ -1,4 +1,5 @@
 import datetime
+import os
 from typing import Annotated, Optional
 
 from fastapi import APIRouter, HTTPException
@@ -107,4 +108,16 @@ def delete_response(response_id: int, session: Annotated[Session, SessionDep]):
 
     response_db.active = False
     session.add(response_db)
+    session.commit()
+
+
+@router.delete("/")
+def delete_all(session: Annotated[Session, SessionDep], passkey: str):
+    if passkey != os.getenv("DEL_PSK"):
+        raise HTTPException(status_code=403, detail="Forbidden: Invalid passkey")
+
+    responses = session.exec(select(Response)).all()
+    for response in responses:
+        session.delete(response)
+
     session.commit()

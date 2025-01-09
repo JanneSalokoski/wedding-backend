@@ -1,10 +1,13 @@
 import datetime
+import os
+from ast import Param
 from typing import Annotated
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Header, HTTPException
 from sqlalchemy.orm import selectinload
 from sqlmodel import Field  # pyright: ignore[reportUnknownVariableType]
 from sqlmodel import Relationship, Session, SQLModel, column, select, text
+from starlette.types import HTTPExceptionHandler
 
 from ..dependencies import SessionDep
 from .responses import Response
@@ -111,8 +114,12 @@ def delete_guest(guest_id: int, session: Annotated[Session, SessionDep]):
 
 
 @router.delete("/")
-def delete_all(session: Annotated[Session, SessionDep]):
+def delete_all(session: Annotated[Session, SessionDep], passkey: str):
     guests = session.exec(select(Guest)).all()
+
+    print(os.getenv("DEL_PSK"))
+    if passkey != os.getenv("DEL_PSK"):
+        raise HTTPException(status_code=403, detail="Forbidden: Invalid passkey")
 
     for guest in guests:
         session.delete(guest)

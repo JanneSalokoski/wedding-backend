@@ -1,6 +1,7 @@
+import os
 from typing import Annotated
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from sqlalchemy import func
 from sqlmodel import Field  # pyright: ignore[reportUnknownVariableType]
 from sqlmodel import Session, SQLModel, select
@@ -87,3 +88,15 @@ def create_progress(progress: ProgressBase, session: Annotated[Session, SessionD
     session.refresh(db_progress)
 
     return db_progress
+
+
+@router.delete("/")
+def delete_all(session: Annotated[Session, SessionDep], passkey: str):
+    if passkey != os.getenv("DEL_PSK"):
+        raise HTTPException(status_code=403, detail="Forbidden: Invalid passkey")
+
+    progresses = session.exec(select(Progress)).all()
+    for progress in progresses:
+        session.delete(progress)
+
+    session.commit()
