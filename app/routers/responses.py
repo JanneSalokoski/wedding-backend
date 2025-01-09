@@ -1,9 +1,18 @@
 import datetime
-from typing import Annotated
+from typing import Annotated, Optional
 
 from fastapi import APIRouter, HTTPException
-from sqlmodel import Field  # pyright: ignore[reportUnknownVariableType]
-from sqlmodel import Column, DateTime, Session, SQLModel, select
+from sqlmodel import Column  # pyright: ignore[reportUnknownVariableType]
+from sqlmodel import (
+    DateTime,
+    Field,
+    Relationship,
+    Session,
+    SQLModel,
+    column,
+    select,
+    text,
+)
 
 from ..dependencies import SessionDep
 
@@ -56,7 +65,18 @@ def create_response(response: ResponseCreate, session: Annotated[Session, Sessio
     session.commit()
     session.refresh(db_response)
 
-    # To-do: If there is matching guest, update them to this response!
+    query = text(
+        """
+        UPDATE Guest
+        SET response_id = :response_id
+        WHERE name = :name;
+    """
+    )
+
+    session.exec(
+        query.bindparams(response_id=db_response.response_id, name=db_response.name)
+    )
+    session.commit()
 
     return db_response
 

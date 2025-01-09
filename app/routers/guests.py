@@ -2,8 +2,9 @@ import datetime
 from typing import Annotated
 
 from fastapi import APIRouter, HTTPException
+from sqlalchemy.orm import selectinload
 from sqlmodel import Field  # pyright: ignore[reportUnknownVariableType]
-from sqlmodel import Relationship, Session, SQLModel, column, select
+from sqlmodel import Relationship, Session, SQLModel, column, select, text
 
 from ..dependencies import SessionDep
 from .responses import Response
@@ -39,26 +40,30 @@ class GuestLink(SQLModel):
 
 
 @router.get("/", response_model=list[GuestPublic])
-def read_progress(session: Annotated[Session, SessionDep]):
-    results = session.exec(
-        select(Guest, Response)
-        .join(Response, Guest.response_id == Response.response_id)
-        .where(Guest.active == True)
-    ).all()
+def read_guests(session: Annotated[Session, SessionDep]):
+    query = text(
+        """
+        SELECT g.guest_id, g.name, g.'group', r.diet, COALESCE(rsvp, FALSE) AS rsvp, r.time
+        FROM Guest as g
+        LEFT JOIN Response as r ON g.response_id = r.response_id;
+    """
+    )
+    res: list[GuestPublic] = session.exec(query).all()
+    return res
 
-    public: list[GuestPublic] = []
-    for guest, response in results:
-        guest_public = GuestPublic(
-            guest_id=guest.guest_id,
-            name=guest.name,
-            group=guest.group,
-            diet=response.diet,
-            rsvp=response.rsvp,
-            time=response.time,
-        )
-        public.append(guest_public)
 
-    return public
+@router.get("/{guest_id}", response_model=GuestPublic)
+def read_guest(guest_id: int, session: Annotated[Session, SessionDep]):
+    query = text(
+        """
+        SELECT g.guest_id, g.name, g.'group', r.diet, COALESCE(rsvp, FALSE) AS rsvp, r.time
+        FROM Guest as g
+        LEFT JOIN Response as r ON g.response_id = r.response_id
+        WHERE g.guest_id = :guest_id;
+    """
+    )
+    res: GuestPublic = session.exec(query.bindparams(guest_id=guest_id)).one()
+    return res
 
 
 @router.post("/", response_model=GuestPublic)
@@ -68,6 +73,17 @@ def create_guest(guest: GuestCreate, session: Annotated[Session, SessionDep]):
     session.commit()
     session.refresh(db_response)
     return db_response
+
+
+@router.post("/many/", response_model=list[GuestPublic])
+def create_guests(guests: list[GuestCreate], session: Annotated[Session, SessionDep]):
+    for guest in guests:
+        db_response = Guest.model_validate(guest)
+        session.add(db_response)
+        session.commit()
+        session.refresh(db_response)
+
+    return guests
 
 
 @router.post("/{guest_id}")
