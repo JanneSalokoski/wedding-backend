@@ -48,6 +48,10 @@ class CreateUser(UserBase):
 class PublicUser(UserBase):
     hashed_password: str
 
+class Login(BaseModel):
+    username: str
+    password: str
+
 
 def verify_password(plain_password: str, hashed_password: str) -> str:
     return argon2.verify(  # pyright: ignore[reportUnknownMemberType, reportUnknownVariableType]
@@ -87,6 +91,31 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
     encoded_jwt: str = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
     return encoded_jwt
+
+
+@router.post("/login")
+async def login_json(
+    login_data: Login,
+    session: Annotated[Session, SessionDep],
+) -> Token:
+    username = login_data.username
+    password = login_data.password
+
+    user = session.exec(select(User).where(User.username == username)).one_or_none()
+
+    if not user or not authenticate_user(user, password):
+        raise HTTPException(
+            status_code=400,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": user.username}, expires_delta=access_token_expires
+    )
+
+    return Token(access_token=access_token, token_type="bearer")
 
 
 async def get_current_user(token: Annotated[str, AuthDep]):

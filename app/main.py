@@ -19,7 +19,7 @@ async def lifespan(app: FastAPI):  # pyright: ignore[reportUnusedParameter]
 
 app: FastAPI = FastAPI(lifespan=lifespan)
 
-origins = ["https://www.jannejaroosa.fi"]
+origins = ["http://localhost:8001", "https://www.jannejaroosa.fi"]
 
 app.add_middleware(
     CORSMiddleware,
