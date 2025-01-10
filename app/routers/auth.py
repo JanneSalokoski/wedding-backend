@@ -1,7 +1,9 @@
+import os
 from datetime import datetime, timedelta, timezone
 from typing import Annotated
 
 import jwt
+from dotenv import load_dotenv
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import OAuth2PasswordRequestForm
 from jwt.exceptions import InvalidTokenError
@@ -14,18 +16,10 @@ from ..dependencies import AuthDep, SessionDep
 
 router = APIRouter()
 
-# This should come from .env
-SECRET_KEY = "8aa4bd02d037d93a9bf148d357fb3ef36ec1bf6823b0373f9b227c34e8af5b4a"
+_ = load_dotenv()
+SECRET_KEY = os.getenv("SECRET")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
-
-fake_users_db = {
-    "admin": {
-        "username": "admin",
-        "hashed_password": "$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW",
-        "disabled": False,
-    }
-}
 
 
 class Token(BaseModel):
@@ -158,13 +152,12 @@ async def login(
     return Token(access_token=access_token, token_type="bearer")
 
 
-@router.get("/")
-def read_users(session: Annotated[Session, SessionDep]):
-    return session.exec(select(User)).all()
-
-
-@router.post("/", response_model=PublicUser)
-def create_user(userData: CreateUser, session: Annotated[Session, SessionDep]):
+@router.post("/users", response_model=PublicUser)
+def create_user(
+    userData: CreateUser,
+    session: Annotated[Session, SessionDep],
+    _: Annotated[str, AuthDep],
+):
     user = User(
         username=userData.username, hashed_password=get_password_hash(userData.password)
     )
@@ -176,8 +169,15 @@ def create_user(userData: CreateUser, session: Annotated[Session, SessionDep]):
     return db_user
 
 
-@router.patch("/", response_model=PublicUser)
-def update_user(userData: CreateUser, session: Annotated[Session, SessionDep]):
+@router.patch(
+    "/users",
+    response_model=PublicUser,
+)
+def update_user(
+    userData: CreateUser,
+    session: Annotated[Session, SessionDep],
+    _: Annotated[str, AuthDep],
+):
     user: User | None = session.exec(
         select(User).where(User.username == userData.username)
     ).one_or_none()
@@ -193,3 +193,17 @@ def update_user(userData: CreateUser, session: Annotated[Session, SessionDep]):
     session.refresh(user)
 
     return user
+
+
+@router.delete("/users")
+def delete_all(
+    session: Annotated[Session, SessionDep], passkey: str, _: Annotated[str, AuthDep]
+):
+    if passkey != os.getenv("DEL_PSK"):
+        raise HTTPException(status_code=403, detail="Forbidden: Invalid passkey")
+
+    users = session.exec(select(User)).all()
+    for user in users:
+        session.delete(user)
+
+    session.commit()

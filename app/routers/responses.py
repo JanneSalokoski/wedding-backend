@@ -15,7 +15,7 @@ from sqlmodel import (
     text,
 )
 
-from ..dependencies import SessionDep
+from ..dependencies import AuthDep, SessionDep
 
 router = APIRouter()
 
@@ -44,13 +44,17 @@ class ResponseCreate(ResponseBase):
 
 
 @router.get("/", response_model=list[ResponsePublic])
-def read_responses(session: Annotated[Session, SessionDep]):
+def read_responses(session: Annotated[Session, SessionDep], _: Annotated[str, AuthDep]):
     responses = session.exec(select(Response).where(Response.active == True)).all()
     return responses
 
 
 @router.get("/{response_id}", response_model=ResponsePublic)
-def read_response(response_id: int, session: Annotated[Session, SessionDep]):
+def read_response(
+    response_id: int,
+    session: Annotated[Session, SessionDep],
+    _: Annotated[str, AuthDep],
+):
     response = session.get(Response, response_id)
     if not response:
         raise HTTPException(status_code=404, detail="Response not found")
@@ -59,7 +63,11 @@ def read_response(response_id: int, session: Annotated[Session, SessionDep]):
 
 
 @router.post("/", response_model=ResponsePublic)
-def create_response(response: ResponseCreate, session: Annotated[Session, SessionDep]):
+def create_response(
+    response: ResponseCreate,
+    session: Annotated[Session, SessionDep],
+    _: Annotated[str, AuthDep],
+):
     db_response = Response.model_validate(response)
     db_response.time = datetime.datetime.now()
     session.add(db_response)
@@ -84,7 +92,10 @@ def create_response(response: ResponseCreate, session: Annotated[Session, Sessio
 
 @router.patch("/{response_id}", response_model=ResponsePublic)
 def update_response(
-    response_id: int, response: Response, session: Annotated[Session, SessionDep]
+    response_id: int,
+    response: Response,
+    session: Annotated[Session, SessionDep],
+    _: Annotated[str, AuthDep],
 ):
     response_db = session.get(Response, response_id)
     if not response_db:
@@ -101,7 +112,11 @@ def update_response(
 
 
 @router.delete("/{response_id}")
-def delete_response(response_id: int, session: Annotated[Session, SessionDep]):
+def delete_response(
+    response_id: int,
+    session: Annotated[Session, SessionDep],
+    _: Annotated[str, AuthDep],
+):
     response_db = session.get(Response, response_id)
     if not response_db:
         raise HTTPException(status_code=404, detail="Response not found")
@@ -112,7 +127,9 @@ def delete_response(response_id: int, session: Annotated[Session, SessionDep]):
 
 
 @router.delete("/")
-def delete_all(session: Annotated[Session, SessionDep], passkey: str):
+def delete_all(
+    session: Annotated[Session, SessionDep], passkey: str, _: Annotated[str, AuthDep]
+):
     if passkey != os.getenv("DEL_PSK"):
         raise HTTPException(status_code=403, detail="Forbidden: Invalid passkey")
 

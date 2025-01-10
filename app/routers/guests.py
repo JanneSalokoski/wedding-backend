@@ -42,13 +42,8 @@ class GuestLink(SQLModel):
     response_id: int = Field()
 
 
-@router.get("/auth")
-def auth(token: Annotated[str, AuthDep]):
-    return {"token": token}
-
-
 @router.get("/", response_model=list[GuestPublic])
-def read_guests(session: Annotated[Session, SessionDep]):
+def read_guests(session: Annotated[Session, SessionDep], _: Annotated[str, AuthDep]):
     query = text(
         """
         SELECT g.guest_id, g.name, g.'group', r.diet, COALESCE(rsvp, FALSE) AS rsvp, r.time
@@ -61,7 +56,9 @@ def read_guests(session: Annotated[Session, SessionDep]):
 
 
 @router.get("/{guest_id}", response_model=GuestPublic)
-def read_guest(guest_id: int, session: Annotated[Session, SessionDep]):
+def read_guest(
+    guest_id: int, session: Annotated[Session, SessionDep], _: Annotated[str, AuthDep]
+):
     query = text(
         """
         SELECT g.guest_id, g.name, g.'group', r.diet, COALESCE(rsvp, FALSE) AS rsvp, r.time
@@ -75,7 +72,11 @@ def read_guest(guest_id: int, session: Annotated[Session, SessionDep]):
 
 
 @router.post("/", response_model=GuestPublic)
-def create_guest(guest: GuestCreate, session: Annotated[Session, SessionDep]):
+def create_guest(
+    guest: GuestCreate,
+    session: Annotated[Session, SessionDep],
+    _: Annotated[str, AuthDep],
+):
     db_response = Guest.model_validate(guest)
     session.add(db_response)
     session.commit()
@@ -84,7 +85,11 @@ def create_guest(guest: GuestCreate, session: Annotated[Session, SessionDep]):
 
 
 @router.post("/many/", response_model=list[GuestPublic])
-def create_guests(guests: list[GuestCreate], session: Annotated[Session, SessionDep]):
+def create_guests(
+    guests: list[GuestCreate],
+    session: Annotated[Session, SessionDep],
+    _: Annotated[str, AuthDep],
+):
     for guest in guests:
         db_response = Guest.model_validate(guest)
         session.add(db_response)
@@ -96,7 +101,10 @@ def create_guests(guests: list[GuestCreate], session: Annotated[Session, Session
 
 @router.post("/{guest_id}")
 def link_response(
-    data: GuestLink, guest_id: int, session: Annotated[Session, SessionDep]
+    data: GuestLink,
+    guest_id: int,
+    session: Annotated[Session, SessionDep],
+    _: Annotated[str, AuthDep],
 ):
     guest = session.get(Guest, guest_id)
     guest.response_id = data.response_id
@@ -108,7 +116,9 @@ def link_response(
 
 
 @router.delete("/{guest_id}")
-def delete_guest(guest_id: int, session: Annotated[Session, SessionDep]):
+def delete_guest(
+    guest_id: int, session: Annotated[Session, SessionDep], _: Annotated[str, AuthDep]
+):
     response_db = session.get(Guest, guest_id)
     if not response_db:
         raise HTTPException(status_code=404, detail="Response not found")
@@ -119,7 +129,9 @@ def delete_guest(guest_id: int, session: Annotated[Session, SessionDep]):
 
 
 @router.delete("/")
-def delete_all(session: Annotated[Session, SessionDep], passkey: str):
+def delete_all(
+    session: Annotated[Session, SessionDep], passkey: str, _: Annotated[str, AuthDep]
+):
     guests = session.exec(select(Guest)).all()
 
     print(os.getenv("DEL_PSK"))

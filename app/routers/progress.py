@@ -6,7 +6,7 @@ from sqlalchemy import func
 from sqlmodel import Field  # pyright: ignore[reportUnknownVariableType]
 from sqlmodel import Session, SQLModel, select
 
-from ..dependencies import SessionDep
+from ..dependencies import AuthDep, SessionDep
 
 router = APIRouter()
 
@@ -37,13 +37,15 @@ class ProgressStat(SQLModel):
 
 
 @router.get("/", response_model=list[ProgressBase])
-def read_progress(session: Annotated[Session, SessionDep]):
+def read_progress(session: Annotated[Session, SessionDep], _: Annotated[str, AuthDep]):
     progresses = session.exec(select(Progress)).all()
     return progresses
 
 
 @router.get("/avg/", response_model=list[ProgressAvg])
-def read_progress_averages(session: Annotated[Session, SessionDep]):
+def read_progress_averages(
+    session: Annotated[Session, SessionDep], _: Annotated[str, AuthDep]
+):
     averages = func.avg(Progress.timestamp).label("average")
     progresses = session.exec(
         select(Progress.headline, averages)
@@ -54,7 +56,9 @@ def read_progress_averages(session: Annotated[Session, SessionDep]):
 
 
 @router.get("/count/", response_model=list[ProgressCount])
-def read_progress_counts(session: Annotated[Session, SessionDep]):
+def read_progress_counts(
+    session: Annotated[Session, SessionDep], _: Annotated[str, AuthDep]
+):
     counts = func.count(Progress.headline).label(  # pyright: ignore[reportArgumentType]
         "amount"
     )
@@ -67,7 +71,9 @@ def read_progress_counts(session: Annotated[Session, SessionDep]):
 
 
 @router.get("/stats/", response_model=list[ProgressStat])
-def read_progress_stats(session: Annotated[Session, SessionDep]):
+def read_progress_stats(
+    session: Annotated[Session, SessionDep], _: Annotated[str, AuthDep]
+):
     averages = func.avg(Progress.timestamp).label("average")
     counts = func.count(Progress.headline).label(  # pyright: ignore[reportArgumentType]
         "amount"
@@ -81,7 +87,11 @@ def read_progress_stats(session: Annotated[Session, SessionDep]):
 
 
 @router.post("/")
-def create_progress(progress: ProgressBase, session: Annotated[Session, SessionDep]):
+def create_progress(
+    progress: ProgressBase,
+    session: Annotated[Session, SessionDep],
+    _: Annotated[str, AuthDep],
+):
     db_progress = Progress.model_validate(progress)
     session.add(db_progress)
     session.commit()
@@ -91,7 +101,9 @@ def create_progress(progress: ProgressBase, session: Annotated[Session, SessionD
 
 
 @router.delete("/")
-def delete_all(session: Annotated[Session, SessionDep], passkey: str):
+def delete_all(
+    session: Annotated[Session, SessionDep], passkey: str, _: Annotated[str, AuthDep]
+):
     if passkey != os.getenv("DEL_PSK"):
         raise HTTPException(status_code=403, detail="Forbidden: Invalid passkey")
 

@@ -9,6 +9,10 @@ connect_args = {"check_same_thread": False}
 engine = create_engine(sqlite_url, connect_args=connect_args)
 
 
+def get_engine():
+    return engine
+
+
 def create_db_and_tables():
     SQLModel.metadata.create_all(engine)
 
