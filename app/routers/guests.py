@@ -9,7 +9,7 @@ from sqlmodel import Field  # pyright: ignore[reportUnknownVariableType]
 from sqlmodel import Relationship, Session, SQLModel, column, select, text
 from starlette.types import HTTPExceptionHandler
 
-from ..dependencies import SessionDep
+from ..dependencies import AuthDep, SessionDep
 from .responses import Response
 
 router = APIRouter()
@@ -40,6 +40,11 @@ class GuestCreate(SQLModel):
 
 class GuestLink(SQLModel):
     response_id: int = Field()
+
+
+@router.get("/auth")
+def auth(token: Annotated[str, AuthDep]):
+    return {"token": token}
 
 
 @router.get("/", response_model=list[GuestPublic])
