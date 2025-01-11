@@ -19,7 +19,7 @@ def create_user(username: str, password: str):
     with Session(engine) as session:
         try:
             query = text(
-                "INSERT INTO User (username, hashed_password) VALUES (:username, :password);"
+                "INSERT INTO User (username, hashed_password, disabled) VALUES (:username, :password, False);"
             )
             session.exec(
                 query.bindparams(username=username, password=argon2.hash(password))
