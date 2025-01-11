@@ -4,7 +4,7 @@ from typing import Annotated
 
 import jwt
 from dotenv import load_dotenv
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from fastapi.security import OAuth2PasswordRequestForm
 from jwt.exceptions import InvalidTokenError
 from passlib.hash import argon2
@@ -87,16 +87,21 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
     else:
         expire = datetime.now(timezone.utc) + timedelta(minutes=15)
 
+    _ = load_dotenv()
+    SECRET_KEY = os.getenv("SECRET")
+
     to_encode.update({"exp": expire})
+    print("secret", SECRET_KEY)
     encoded_jwt: str = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
     return encoded_jwt
 
 
-@router.post("/login")
+@router.post("/login/")
 async def login_json(
     login_data: Login,
     session: Annotated[Session, SessionDep],
+    #response: Response
 ) -> Token:
     username = login_data.username
     password = login_data.password
