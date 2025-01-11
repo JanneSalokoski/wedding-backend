@@ -15,7 +15,7 @@ ALGORITHM = "HS256"
 
 SessionDep: Annotated[Session, Depends(get_session)] = Depends(get_session)
 
-auth_scheme = OAuth2PasswordBearer(tokenUrl="auth/token")
+auth_scheme = OAuth2PasswordBearer(tokenUrl="https://api.jannejaroosa.fi/auth/token")
 
 
 def validate_token(token: str = Depends(auth_scheme)) -> dict:
