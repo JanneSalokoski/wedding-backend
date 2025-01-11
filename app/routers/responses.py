@@ -66,7 +66,6 @@ def read_response(
 def create_response(
     response: ResponseCreate,
     session: Annotated[Session, SessionDep],
-    _: Annotated[str, AuthDep],
 ):
     db_response = Response.model_validate(response)
     db_response.time = datetime.datetime.now()

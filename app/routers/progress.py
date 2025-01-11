@@ -37,15 +37,13 @@ class ProgressStat(SQLModel):
 
 
 @router.get("/", response_model=list[ProgressBase])
-def read_progress(session: Annotated[Session, SessionDep], _: Annotated[str, AuthDep]):
+def read_progress(session: Annotated[Session, SessionDep]):
     progresses = session.exec(select(Progress)).all()
     return progresses
 
 
 @router.get("/avg/", response_model=list[ProgressAvg])
-def read_progress_averages(
-    session: Annotated[Session, SessionDep], _: Annotated[str, AuthDep]
-):
+def read_progress_averages(session: Annotated[Session, SessionDep]):
     averages = func.avg(Progress.timestamp).label("average")
     progresses = session.exec(
         select(Progress.headline, averages)
@@ -71,9 +69,7 @@ def read_progress_counts(
 
 
 @router.get("/stats/", response_model=list[ProgressStat])
-def read_progress_stats(
-    session: Annotated[Session, SessionDep], _: Annotated[str, AuthDep]
-):
+def read_progress_stats(session: Annotated[Session, SessionDep]):
     averages = func.avg(Progress.timestamp).label("average")
     counts = func.count(Progress.headline).label(  # pyright: ignore[reportArgumentType]
         "amount"
@@ -90,7 +86,6 @@ def read_progress_stats(
 def create_progress(
     progress: ProgressBase,
     session: Annotated[Session, SessionDep],
-    _: Annotated[str, AuthDep],
 ):
     db_progress = Progress.model_validate(progress)
     session.add(db_progress)
